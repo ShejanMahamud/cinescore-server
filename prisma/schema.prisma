@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -12,4 +6,356 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String              @id @default(uuid())
+  username          String              @unique
+  name              String
+  email             String              @unique
+  password          String
+  role              UserRole
+  refreshToken      String
+  refreshTokenExp   DateTime
+  verifyToken       DateTime
+  verifyTokenExp    DateTime
+  isDeleted         Boolean
+  emailVerified     Boolean
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  Review            Review[]
+  ReviewLike        ReviewLike[]
+  ReviewComment     ReviewComment[]
+  ReviewCommentLike ReviewCommentLike[]
+  UserWatchList     UserWatchList[]
+  Payment           Payment[]
+  UserTitleAccess   UserTitleAccess[]
+  Notification      Notification[]
+
+  @@map("users")
+}
+
+model Review {
+  id            String          @id @default(uuid())
+  rating        Int
+  userId        String
+  titleId       String
+  heading       String
+  content       String
+  spoiler       Boolean
+  isApproved    Boolean
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         Title           @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  ReviewTag     ReviewTag[]
+  ReviewLike    ReviewLike[]
+  ReviewComment ReviewComment[]
+
+  @@map("reviews")
+}
+
+model Tag {
+  id        String      @id @default(uuid())
+  name      String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  ReviewTag ReviewTag[]
+
+  @@map("tags")
+}
+
+model ReviewTag {
+  id        String   @id @default(uuid())
+  reviewId  String
+  tagId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@map("review_tags")
+}
+
+model ReviewLike {
+  id        String   @id @default(uuid())
+  reviewId  String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId])
+  @@map("review_likes")
+}
+
+model ReviewComment {
+  id                String              @id @default(uuid())
+  userId            String
+  reviewId          String
+  comment           String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review            Review              @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  ReviewCommentLike ReviewCommentLike[]
+
+  @@map("review_comments")
+}
+
+model ReviewCommentLike {
+  id        String        @id @default(uuid())
+  userId    String
+  commentId String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   ReviewComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@map("review_comments_likes")
+}
+
+model Title {
+  id              String            @id @default(uuid())
+  title           String
+  poster_url      String
+  type            MovieType
+  year            String
+  rated           String
+  released        String
+  runtime         String
+  plot            String
+  awards          String
+  imdb_rating     Int
+  imdb_votes      Int
+  imdb_id         String
+  total_season    Int?
+  meta_score      Int
+  box_office      String
+  production      String
+  website         String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  Review          Review[]
+  PricingOption   PricingOption[]
+  TitleRating     TitleRating[]
+  TitleGenre      TitleGenre[]
+  TitlePeople     TitlePeople[]
+  TitleLanguage   TitleLanguage[]
+  TitleCountry    TitleCountry[]
+  UserWatchList   UserWatchList[]
+  UserTitleAccess UserTitleAccess[]
+
+  @@map("titles")
+}
+
+model PricingOption {
+  id                String     @id @default(uuid())
+  titleId           String
+  access_type       AccessType
+  price             Int
+  discount          Int        @default(0)
+  duration_in_hours Int?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  title             Title      @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  Payment           Payment[]
+
+  @@map("pricing_options")
+}
+
+model TitleRating {
+  id        String            @id @default(uuid())
+  titleId   String
+  sourceId  String
+  value     String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  title     Title             @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  source    TitleRatingSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@map("title_ratings")
+}
+
+model TitleRatingSource {
+  id          String        @id @default(uuid())
+  name        String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  TitleRating TitleRating[]
+
+  @@map("title_ratings_sources")
+}
+
+model Genre {
+  id         String       @id @default(uuid())
+  name       String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  TitleGenre TitleGenre[]
+}
+
+model TitleGenre {
+  id        String   @id @default(uuid())
+  titleId   String
+  genreId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  genre     Genre    @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@map("title_genres")
+}
+
+model People {
+  id          String        @id @default(uuid())
+  name        String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  TitlePeople TitlePeople[]
+
+  @@map("peoples")
+}
+
+model TitlePeople {
+  id        String     @id @default(uuid())
+  titleId   String
+  peopleId  String
+  role      PeopleRole
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  title     Title      @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  people    People     @relation(fields: [peopleId], references: [id], onDelete: Cascade)
+
+  @@map("title_peoples")
+}
+
+model Language {
+  id            String          @id @default(uuid())
+  name          String
+  createdAt     DateTime        @updatedAt
+  updatedAt     DateTime        @updatedAt
+  TitleLanguage TitleLanguage[]
+
+  @@map("languages")
+}
+
+model TitleLanguage {
+  id         String   @id @default(uuid())
+  titleId    String
+  languageId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  title      Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  language   Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@map("title_languages")
+}
+
+model Country {
+  id           String         @id @default(uuid())
+  name         String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  TitleCountry TitleCountry[]
+
+  @@map("countries")
+}
+
+model TitleCountry {
+  id        String   @id @default(uuid())
+  titleId   String
+  countryId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  country   Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@map("title_countries")
+}
+
+model UserWatchList {
+  id        String   @id @default(uuid())
+  userId    String
+  titleId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@map("user_watchlists")
+}
+
+model Payment {
+  id              String            @id @default(uuid())
+  userId          String
+  pricingOptionId String
+  stripePriceId   String
+  status          PaymentStatus
+  recieptUrl      String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  pricingOption   PricingOption     @relation(fields: [pricingOptionId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  UserTitleAccess UserTitleAccess[]
+
+  @@map("payments")
+}
+
+model UserTitleAccess {
+  id             String    @id @default(uuid())
+  userId         String
+  titleId        String
+  paymentId      String
+  streaming_link String
+  start_time     DateTime
+  end_time       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          Title     @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  payment        Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("user_title_access")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  title       String
+  userId      String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum MovieType {
+  movie
+  series
+}
+
+enum AccessType {
+  buy
+  rent
+}
+
+enum PeopleRole {
+  director
+  writer
+  actor
+}
+
+enum PaymentStatus {
+  pending
+  success
+  failed
 }
