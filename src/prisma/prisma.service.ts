@@ -1,1 +1,3 @@
-export class PrismaService extends 
+import { PrismaClient } from 'generated/prisma';
+
+export class PrismaService extends PrismaClient {}
