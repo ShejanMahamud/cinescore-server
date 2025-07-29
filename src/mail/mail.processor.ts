@@ -1,9 +1,15 @@
 import { MailerService } from '@nestjs-modules/mailer';
-import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
+import {
+  InjectQueue,
+  OnWorkerEvent,
+  Processor,
+  WorkerHost,
+} from '@nestjs/bullmq';
 import { NotFoundException } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Job, Queue } from 'bullmq';
+import { PrismaService } from 'src/prisma';
 
-type MailJobData = {
+export type MailJobData = {
   to: string;
   userName: string;
   verificationLink: string;
@@ -12,7 +18,11 @@ type MailJobData = {
 
 @Processor('mailer', { concurrency: 10 })
 export class MailProcessor extends WorkerHost {
-  constructor(private mailerService: MailerService) {
+  constructor(
+    @InjectQueue('mailer-retry') private retryQueue: Queue,
+    private mailerService: MailerService,
+    private prisma: PrismaService,
+  ) {
     super();
   }
 
@@ -37,8 +47,16 @@ export class MailProcessor extends WorkerHost {
     }
   }
 
-  @OnWorkerEvent('completed')
-  onCompleted(job: Job, result: any) {
-    console.log('Job completed:', job.id);
+  @OnWorkerEvent('failed')
+  async onFailed(job: Job, error: Error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    await this.prisma.failedJob.create({
+      data: {
+        jobName: job.name,
+        error: errorMessage,
+        attempts: job.attemptsMade,
+      },
+    });
+    return this.retryQueue.add('account-verify-retry', job.data);
   }
 }

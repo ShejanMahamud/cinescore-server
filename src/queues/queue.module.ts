@@ -14,9 +14,28 @@ import { ConfigService } from '@nestjs/config';
         },
       }),
     }),
-    BullModule.registerQueue({
-      name: 'mailer',
-    }),
+    BullModule.registerQueue(
+      {
+        name: 'mailer',
+        defaultJobOptions: {
+          attempts: 0,
+          removeOnComplete: 100,
+          removeOnFail: 50,
+        },
+      },
+      {
+        name: 'mailer-retry',
+        defaultJobOptions: {
+          attempts: 2,
+          removeOnComplete: 100,
+          removeOnFail: 50,
+          backoff: {
+            type: 'exponential',
+            delay: 3000,
+          },
+        },
+      },
+    ),
   ],
   exports: [BullModule],
 })

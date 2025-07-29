@@ -12,16 +12,6 @@ export class MailService {
     verificationLink: string;
     year: number;
   }) {
-    await this.mailQueue.add('account-verify-email', data, {
-      attempts: 0,
-      removeOnComplete: {
-        age: 1800,
-        count: 100,
-      },
-      removeOnFail: {
-        age: 900,
-        count: 50,
-      },
-    });
+    await this.mailQueue.add('account-verify-email', data);
   }
 }

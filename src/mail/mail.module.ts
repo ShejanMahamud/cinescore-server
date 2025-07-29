@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import { QueueModule } from 'src/queues';
+import { MailRetryProcessor } from './mail-retry.processor';
 import { MailProcessor } from './mail.processor';
 import { MailService } from './mail.service';
 
@@ -34,7 +35,7 @@ import { MailService } from './mail.service';
       }),
     }),
   ],
-  providers: [MailService, MailProcessor],
+  providers: [MailService, MailProcessor, MailRetryProcessor],
   exports: [MailService],
 })
 export class MailModule {}
