@@ -3,17 +3,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { MailService } from 'src/mail/mail.service';
 import { PrismaService } from 'src/prisma';
 import { Util } from 'src/utils/util';
-import { AccountVerifyDto, RegisterUserDto } from './dto';
+import { AccountVerifyDto, LoginUserDto, RegisterUserDto } from './dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
+    private jwtService: JwtService,
+    private config: ConfigService,
   ) {}
 
   async register(dto: RegisterUserDto, req: Request) {
@@ -95,5 +100,108 @@ export class AuthService {
       return updatedUser;
     });
     return { success: true, message: 'Account email verified' };
+  }
+
+  async login(dto: LoginUserDto) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: {
+          email: dto.email,
+        },
+      });
+      if (!user) {
+        throw new NotFoundException('User not found!');
+      }
+      const isMatched = await Util.match(user.password, dto.password);
+      if (!isMatched) {
+        throw new BadRequestException('Credentials not valid');
+      }
+      const tokens = await this.generateTokens({
+        email: user.email,
+        sub: user.id,
+      });
+      const hashedToken = await Util.hash(tokens.refresh_token);
+      await tx.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          refreshToken: hashedToken,
+          resetTokenExp: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
+        },
+      });
+      return tokens.access_token;
+    });
+    return {
+      success: true,
+      message: 'Login Successful!',
+      data: {
+        accessToken: result,
+      },
+    };
+  }
+
+  async refreshToken(dto: RefreshTokenDto) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: {
+          id: dto.id,
+        },
+      });
+      if (!user || !user.refreshToken || !user.refreshTokenExp) {
+        throw new NotFoundException('User or refresh token not found');
+      }
+      const isMatched = await Util.match(user.refreshToken, dto.token);
+      const isExpired = new Date() > user.refreshTokenExp;
+      if (!isMatched || isExpired) {
+        throw new BadRequestException('Tokens are not matched or expired');
+      }
+      await this.jwtService.verify(dto.token, {
+        secret: this.config.get('REFRESH_SECRET') as string,
+      });
+      const tokens = await this.generateTokens({
+        email: user.email,
+        sub: user.id,
+      });
+      await tx.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          refreshToken: tokens.refresh_token,
+          refreshTokenExp: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
+        },
+      });
+      return tokens.access_token;
+    });
+    return {
+      success: true,
+      message: 'New Access token revoked!',
+      data: {
+        access_token: result,
+      },
+    };
+  }
+
+  async generateTokens(data: { email: string; sub: string }) {
+    const accessToken = this.jwtService.sign(
+      { email: data.email, sub: data.sub },
+      {
+        secret: this.config.get('ACCESS_SECRET'),
+        expiresIn: this.config.get('ACCESS_EXPIRES'),
+      },
+    );
+    const refreshToken = this.jwtService.sign(
+      { email: data.email, sub: data.sub },
+      {
+        secret: this.config.get('REFRESH_SECRET'),
+        expiresIn: this.config.get('REFRESH_EXPIRES'),
+      },
+    );
+    const [access_token, refresh_token] = await Promise.all([
+      accessToken,
+      refreshToken,
+    ]);
+    return { access_token, refresh_token };
   }
 }

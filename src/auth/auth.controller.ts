@@ -1,7 +1,8 @@
 import { Body, Controller, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
-import { AccountVerifyDto, RegisterUserDto } from './dto';
+import { AccountVerifyDto, LoginUserDto, RegisterUserDto } from './dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -14,5 +15,15 @@ export class AuthController {
   @Post('verify-account')
   verifyAccount(@Body() dto: AccountVerifyDto) {
     return this.authService.validateAccountVerifyEmail(dto);
+  }
+
+  @Post('login')
+  login(@Body() dto: LoginUserDto) {
+    return this.authService.login(dto);
+  }
+
+  @Post('refresh-token')
+  refreshToken(dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto);
   }
 }
