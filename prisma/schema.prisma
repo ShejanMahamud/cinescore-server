@@ -130,14 +130,14 @@ model Title {
   runtime         String
   plot            String
   awards          String
-  imdb_rating     Int
-  imdb_votes      Int
+  imdb_rating     String
+  imdb_votes      String
   imdb_id         String
   total_season    Int?
-  meta_score      Int
-  box_office      String
-  production      String
-  website         String
+  meta_score      String
+  box_office      String?
+  production      String?
+  website         String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   Review          Review[]
@@ -170,8 +170,8 @@ model PricingOption {
 
 model TitleRating {
   id        String            @id @default(uuid())
-  titleId   String
-  sourceId  String
+  titleId   String            
+  sourceId  String            
   value     String
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
@@ -183,7 +183,7 @@ model TitleRating {
 
 model TitleRatingSource {
   id          String        @id @default(uuid())
-  name        String
+  name        String         @unique
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   TitleRating TitleRating[]
@@ -193,7 +193,7 @@ model TitleRatingSource {
 
 model Genre {
   id         String       @id @default(uuid())
-  name       String
+  name       String       @unique
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
   TitleGenre TitleGenre[]
@@ -201,8 +201,8 @@ model Genre {
 
 model TitleGenre {
   id        String   @id @default(uuid())
-  titleId   String
-  genreId   String
+  titleId   String   
+  genreId   String   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
@@ -213,7 +213,7 @@ model TitleGenre {
 
 model People {
   id          String        @id @default(uuid())
-  name        String
+  name        String        @unique
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   TitlePeople TitlePeople[]
@@ -223,8 +223,8 @@ model People {
 
 model TitlePeople {
   id        String     @id @default(uuid())
-  titleId   String
-  peopleId  String
+  titleId   String     
+  peopleId  String     
   role      PeopleRole
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -236,7 +236,7 @@ model TitlePeople {
 
 model Language {
   id            String          @id @default(uuid())
-  name          String
+  name          String          @unique
   createdAt     DateTime        @updatedAt
   updatedAt     DateTime        @updatedAt
   TitleLanguage TitleLanguage[]
@@ -246,8 +246,8 @@ model Language {
 
 model TitleLanguage {
   id         String   @id @default(uuid())
-  titleId    String
-  languageId String
+  titleId    String   
+  languageId String   
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   title      Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
@@ -258,7 +258,7 @@ model TitleLanguage {
 
 model Country {
   id           String         @id @default(uuid())
-  name         String
+  name         String         @unique
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   TitleCountry TitleCountry[]
@@ -268,8 +268,8 @@ model Country {
 
 model TitleCountry {
   id        String   @id @default(uuid())
-  titleId   String
-  countryId String
+  titleId   String    
+  countryId String   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)

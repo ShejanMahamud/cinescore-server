@@ -200,7 +200,7 @@ export class AuthService {
 
   async resendAccountVerification(email: string, req: Request) {
     await this.prisma.$transaction(async (tx) => {
-      const user = await this.prisma.user.findUnique({
+      const user = await tx.user.findUnique({
         where: {
           email: email,
           emailVerified: false,
