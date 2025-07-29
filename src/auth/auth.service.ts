@@ -107,6 +107,13 @@ export class AuthService {
       const user = await tx.user.findUnique({
         where: {
           email: dto.email,
+          emailVerified: true,
+          isDeleted: false,
+        },
+        select: {
+          password: true,
+          email: true,
+          id: true,
         },
       });
       if (!user) {
@@ -146,6 +153,14 @@ export class AuthService {
       const user = await tx.user.findUnique({
         where: {
           id: dto.id,
+          isDeleted: false,
+          emailVerified: true,
+        },
+        select: {
+          refreshToken: true,
+          refreshTokenExp: true,
+          email: true,
+          id: true,
         },
       });
       if (!user || !user.refreshToken || !user.refreshTokenExp) {
@@ -180,6 +195,57 @@ export class AuthService {
       data: {
         access_token: result,
       },
+    };
+  }
+
+  async resendAccountVerification(email: string, req: Request) {
+    await this.prisma.$transaction(async (tx) => {
+      const user = await this.prisma.user.findUnique({
+        where: {
+          email: email,
+          emailVerified: false,
+          isDeleted: false,
+        },
+        select: {
+          verifyToken: true,
+          verifyTokenExp: true,
+          id: true,
+          email: true,
+          username: true,
+        },
+      });
+      if (!user || !user.verifyToken || !user.verifyTokenExp) {
+        throw new NotFoundException('User not found or already verified');
+      }
+      const isExpired = new Date() > user.verifyTokenExp;
+      if (!isExpired) {
+        throw new BadRequestException(
+          'Token is valid right now. no need to request new',
+        );
+      }
+      const verifyToken = await Util.hash(Util.generateBytes());
+      const verifyTokenExp = new Date(Date.now() + 1000 * 60 * 15);
+
+      await tx.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          verifyToken,
+          verifyTokenExp,
+        },
+      });
+      await this.mailService.sendAccountVerifyEmail({
+        to: user.email,
+        userName: user.username,
+        verificationLink: `${req.protocol}://${req.get('host')}/token=${verifyToken}/uid=${user.id}`,
+        year: new Date().getFullYear(),
+      });
+      return true;
+    });
+    return {
+      success: true,
+      message: 'Verification email sent!',
     };
   }
 
